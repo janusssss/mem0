@@ -60,7 +60,7 @@ SKIPPED_REQUEST_LOG_PATHS = {"/api/health", "/docs", "/redoc", "/openapi.json"}
 SKIPPED_REQUEST_LOG_PREFIXES = ("/requests",)
 
 BUNDLED_LLM_PROVIDERS = ("openai", "anthropic", "gemini")
-BUNDLED_EMBEDDER_PROVIDERS = ("openai", "gemini")
+BUNDLED_EMBEDDER_PROVIDERS = ("openai", "gemini", "ollama")
 
 
 def _warn_if_unconfigured() -> None:
@@ -128,13 +128,20 @@ DEFAULT_CONFIG = {
             "user": POSTGRES_USER,
             "password": POSTGRES_PASSWORD,
             "collection_name": POSTGRES_COLLECTION_NAME,
+            "embedding_model_dims": 768,
         },
     },
     "llm": {
         "provider": "openai",
         "config": {"api_key": OPENAI_API_KEY, "temperature": 0.2, "model": DEFAULT_LLM_MODEL},
     },
-    "embedder": {"provider": "openai", "config": {"api_key": OPENAI_API_KEY, "model": DEFAULT_EMBEDDER_MODEL}},
+    "embedder": {
+        "provider": "ollama",
+        "config": {
+            "ollama_base_url": "http://host.docker.internal:11434",
+            "model": DEFAULT_EMBEDDER_MODEL,
+        },
+    },
     "history_db_path": HISTORY_DB_PATH,
 }
 
@@ -160,7 +167,8 @@ app.add_exception_handler(UpstreamError, upstream_error_handler)
 DASHBOARD_URL = os.environ.get("DASHBOARD_URL", "http://localhost:3000")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[DASHBOARD_URL],
+    # allow_origins=[DASHBOARD_URL],
+    allow_origin_regex=".+",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -322,7 +330,6 @@ async def log_requests(request: Request, call_next):
 @app.get("/configure", summary="Get current Mem0 configuration")
 def get_config(_auth=Depends(verify_auth)):
     return _redact_config(get_current_config())
-
 
 @app.get("/configure/providers", summary="List bundled LLM and embedder providers")
 def list_bundled_providers(_auth=Depends(verify_auth)):

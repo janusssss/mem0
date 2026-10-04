@@ -11,6 +11,8 @@ services:
       - .env
     networks:
       - mem0_network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - ./history:/app/history
       - .:/app
